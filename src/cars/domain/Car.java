@@ -19,8 +19,6 @@ public class Car {
         this.color = color;
         this.modelName = modelName;
         this.state = State.EXCELLENT;
-        this.inUse = false;
-        this.ifRemoved = false;
     }
 
     public String getRegNumber() {
@@ -70,5 +68,17 @@ public class Car {
     @Override
     public int hashCode() {
         return Objects.hash(regNumber);
+    }
+
+    @Override
+    public String toString() {
+        return "Car{" +
+                "regNumber='" + regNumber + '\'' +
+                ", color='" + color + '\'' +
+                ", modelName='" + modelName + '\'' +
+                ", state=" + state +
+                ", inUse=" + inUse +
+                ", ifRemoved=" + ifRemoved +
+                '}';
     }
 }

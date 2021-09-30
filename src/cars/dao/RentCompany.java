@@ -102,8 +102,12 @@ public class RentCompany extends AbstractRentCompany {
         // 2) можно ли так:  берем последнюю запись в листе данного авто по ключу (она в любом случае всегда не закрытая, иначе авто NOT_RENT) и пробегаться по листу не надо
         RentRecord lastRecordOfThisCar = carRecords.get(regNumber).get(carRecords.get(regNumber).size() - 1);
 
-        if (!drivers.containsKey(licenceId) || lastRecordOfThisCar.getLicenceId() != licenceId)
+//        if (!drivers.containsKey(licenceId) || lastRecordOfThisCar.getLicenceId() != licenceId)
+//            return CarsReturnCode.NO_DRIVER;
+        if (!drivers.containsKey(licenceId))
             return CarsReturnCode.NO_DRIVER;
+        if (lastRecordOfThisCar.getLicenceId() != licenceId)
+            return CarsReturnCode.CAR_NOT_RENTED;
         if (returnDate.isBefore(lastRecordOfThisCar.getRentDate()) || returnDate.isAfter(LocalDate.now()))
             return CarsReturnCode.RETURN_DATE_WRONG;
 
@@ -118,7 +122,7 @@ public class RentCompany extends AbstractRentCompany {
 
         // sum coast over rent
         if (returnDate.isAfter(lastRecordOfThisCar.getRentDate().plusDays(lastRecordOfThisCar.getRentDays()))) {
-            float sumOverRent = (factDaysRent - lastRecordOfThisCar.getRentDays()) * (thisModelPrice + (thisModelPrice / 100 * finePercent));
+            float sumOverRent = (float) ((factDaysRent - lastRecordOfThisCar.getRentDays()) * (thisModelPrice + ((float)thisModelPrice / 100. * finePercent)));
             lastRecordOfThisCar.setCoast(lastRecordOfThisCar.getCoast() + sumOverRent);
         }
 
@@ -130,11 +134,13 @@ public class RentCompany extends AbstractRentCompany {
 
         // price of petrol
         if (lastRecordOfThisCar.getGasTankPercent() < 100) {
-            float petrolCoast = (thisModelGasTank - Math.round((float) thisModelGasTank / 100 * gasTankPercent)) * gasPrice;
+            float petrolCoast = (float) ((thisModelGasTank -  thisModelGasTank / 100. * gasTankPercent) * gasPrice);
             lastRecordOfThisCar.setCoast(lastRecordOfThisCar.getCoast() + petrolCoast);
         }
 
-        if (lastRecordOfThisCar.getDamages() <= DAMAGE_BAD_STATE) {
+        if (lastRecordOfThisCar.getDamages() == 0) {
+            cars.get(regNumber).setState(State.EXCELLENT);
+        } else if (lastRecordOfThisCar.getDamages() <= DAMAGE_BAD_STATE) {
             cars.get(regNumber).setState(State.GOOD);
         } else if (lastRecordOfThisCar.getDamages() > DAMAGE_BAD_STATE && lastRecordOfThisCar.getDamages() < DAMAGE_FOR_REMOVE) {
             cars.get(regNumber).setState(State.BAD);
@@ -161,7 +167,8 @@ public class RentCompany extends AbstractRentCompany {
     public List<Car> clear(LocalDate currentDate, int days) {
         List<Car> removedCarList = returnedRecords.headMap(currentDate.minusDays(days)).entrySet().stream()
                 .flatMap(e -> e.getValue().stream())
-                .filter(e -> e.getDamages() >= DAMAGE_FOR_REMOVE)
+                .map(e -> cars.get(e.getRegNumber()))
+                .filter(e -> e.isIfRemoved())
                 .distinct()
                 .map(e -> cars.get(e.getRegNumber()))
                 .collect(Collectors.toList());
@@ -190,20 +197,28 @@ public class RentCompany extends AbstractRentCompany {
 
     @Override
     public List<Driver> getCarDrivers(String regNumber) {
-        return carRecords.entrySet().stream()
+        List<Driver> c =  carRecords.entrySet().stream()
                 .flatMap(e -> e.getValue().stream())
+                .filter(e -> e.getRegNumber().equals(regNumber))
                 .map(o -> drivers.get(o.getLicenceId()))
                 .distinct()
                 .collect(Collectors.toList());
+
+        if (c.size() == 0) return null;
+        return c;
     }
 
     @Override
     public List<Car> getDriverCars(long licence) {
-        return driverRecords.entrySet().stream()
+        driverRecords.entrySet().stream().forEach(System.out::println);
+        List<Car> c = driverRecords.entrySet().stream()
                 .flatMap(e -> e.getValue().stream())
+                .filter(e -> e.getLicenceId() == licence)
                 .map(o -> cars.get(o.getRegNumber()))
                 .distinct()
                 .collect(Collectors.toList());
+        if (c.size() == 0) return null;
+        return c;
     }
 
     @Override

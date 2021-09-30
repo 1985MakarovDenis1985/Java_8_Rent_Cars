@@ -1,5 +1,7 @@
 package test;
 
+import cars.dao.AbstractRentCompany;
+import cars.dao.IRentCompany;
 import cars.dao.RentCompany;
 import cars.domain.Car;
 import cars.domain.Driver;
@@ -11,369 +13,293 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class RentCompanyTest {
 
-    RentCompany myCompany;
+    IRentCompany rentCompany;
+    private static final String REG_NUMBER1 = "123";
+    private static final String REG_NUMBER2 = "124";
+    private static final String REG_NUMBER3 = "125";
+    private static final String MODEL1 = "BMW12";
+    private static final String MODEL2 = "B4";
+    private static final long LICENSE1 = 123;
+    private static final long LICENSE2 = 124;
+    private static final LocalDate RENT_DATE1 = LocalDate.of(2021, 2, 15);
+    private static final int RENT_DAYS1 = 5;
+    private static final LocalDate RETURN_DATE = RENT_DATE1.plusDays(RENT_DAYS1);
+    private static final LocalDate RETURN_DATE_WRONG = RENT_DATE1.minusDays(1);
+    private static final long DELAY_DAYS = 2;
+    private static final LocalDate RETURN_DATE_DELAY = RETURN_DATE.plusDays(DELAY_DAYS);
+    private static final int DAMAGES = 50;
+    private static final int GAS_PERCENT = 50;
+    private static final LocalDate CURRENT_DATE = LocalDate.of(2021, 3, 15);
+    private static final int CLEAR_DAYS = 15;
+    Car car1 = new Car(REG_NUMBER1, "red", MODEL1);
+    Car car2 = new Car(REG_NUMBER2, "green", MODEL2);
+    Car car3 = new Car(REG_NUMBER3, "silver", MODEL1);
+    Model model1 = new Model(MODEL1, 55, "Germany", "BMW", 200);
+    Model model2 = new Model(MODEL2, 50, "Japan", "Subaru", 190);
+    Driver driver1 = new Driver(LICENSE1, "Moshe", 1980, "050-1234567");
+    Driver driver2 = new Driver(LICENSE2, "David", 1960, "050-7654321");
+    private RentRecord record = new RentRecord(LICENSE1, REG_NUMBER1, RENT_DATE1, RENT_DAYS1);
 
     @BeforeEach
-    void setUp() {
-        myCompany = new RentCompany();
-        myCompany.addModel(new Model("z3", 50, "bmw", "Germany", 100));
-        myCompany.addModel(new Model("z4", 50, "bmw", "Germany", 150));
-        myCompany.addModel(new Model("polo", 50, "VW", "Germany", 40));
-        myCompany.addCar(new Car("1000", "red", "z4"));
-        myCompany.addCar(new Car("2000", "red", "z3"));
-        myCompany.addDriver(new Driver(1000, "Peter", 1975, "0547630001"));
-        myCompany.addDriver(new Driver(2000, "Sam", 1986, "0547630002"));
-    }
-
-    @Test
-    void testAddModel() {
-        assertEquals(CarsReturnCode.OK, myCompany.addModel(new Model("i8", 50, "bmw", "Germany", 180)));
-        assertEquals(CarsReturnCode.MODEL_EXIST, myCompany.addModel(new Model("z3", 40, "bmw", "Germany", 70)));
+    void setUp() throws Exception {
+        rentCompany = new RentCompany();
+        rentCompany.addModel(model1);
+        rentCompany.addDriver(driver1);
+        rentCompany.addCar(car1);
+        rentCompany.rentCar(REG_NUMBER1, LICENSE1, RENT_DATE1, RENT_DAYS1);
     }
 
     @Test
     void testAddCar() {
-        Car car1 = new Car("3000", "red", "z4");
-        assertEquals(CarsReturnCode.OK, myCompany.addCar(car1));
-
-        Car car2 = new Car("1000", "red", "z4");
-        assertEquals(CarsReturnCode.CAR_EXIST, myCompany.addCar(car2));
-        assertEquals(CarsReturnCode.CAR_EXIST, myCompany.addCar(car1));
-
-        Car car3 = new Car("4000", "white", "mercedes");
-        assertEquals(CarsReturnCode.NO_MODEL, myCompany.addCar(car3));
+        assertEquals(CarsReturnCode.CAR_EXIST, rentCompany.addCar(car1));
+        assertEquals(CarsReturnCode.NO_MODEL, rentCompany.addCar(car2));
+        assertEquals(CarsReturnCode.OK, rentCompany.addCar(car3));
     }
 
     @Test
     void testAddDriver() {
-        Driver d1 = new Driver(3000, "Sara", 1991, "0547630003");
-        assertEquals(CarsReturnCode.OK, myCompany.addDriver(d1));
-        assertEquals(CarsReturnCode.DRIVER_EXIST, myCompany.addDriver(d1));
-        Driver d2 = new Driver(2000, "Jim", 1991, "0547630004");
-        assertEquals(CarsReturnCode.DRIVER_EXIST, myCompany.addDriver(d2));
+        assertEquals(CarsReturnCode.DRIVER_EXIST, rentCompany.addDriver(driver1));
+        assertEquals(CarsReturnCode.OK, rentCompany.addDriver(driver2));
     }
 
     @Test
-    void testGetModel() {
-        Model m1 = new Model("polo", 50, "VW", "Germany", 40);
-        Model m2 = new Model("jetta", 50, "VW", "Germany", 40);
-        assertEquals(m1, myCompany.getModel("polo"));
-        assertNull(myCompany.getModel(m2.getModelName()));
-
-        myCompany.addModel(m2);
-        assertEquals(m1, myCompany.getModel(m1.getModelName()));
-        assertEquals(m2, myCompany.getModel("jetta"));
+    void testAddModel() {
+        assertEquals(CarsReturnCode.MODEL_EXIST, rentCompany.addModel(model1));
+        assertEquals(CarsReturnCode.OK, rentCompany.addModel(model2));
     }
 
     @Test
     void testGetCar() {
-        Car car1 = new Car("1000", "red", "z4");
-        Car car2 = new Car("3000", "red", "i8");
-        Car car3 = new Car("4000", "red", "z4");
-        assertEquals(car1, myCompany.getCar("1000"));
-        assertNull(myCompany.getCar("3000"));
-
-        myCompany.addCar(car2);
-        myCompany.addCar(car3);
-        assertNull(myCompany.getCar("3000"));
-        assertEquals(car3, myCompany.getCar("4000"));
+        assertNull(rentCompany.getCar(REG_NUMBER2));
+        assertEquals(car1, rentCompany.getCar(REG_NUMBER1));
     }
 
     @Test
     void testGetDriver() {
-        Driver d1 = new Driver(1000, "Peter", 1975, "0547630001");
-        Driver d2 = new Driver(3000, "Jim", 1985, "0547630002");
-        assertEquals(d1, myCompany.getDriver(1000));
-        assertNull(myCompany.getDriver(3000));
-
-        myCompany.addDriver(d2);
-        assertEquals(d2, myCompany.getDriver(3000));
+        assertNull(rentCompany.getDriver(LICENSE2));
+        assertEquals(driver1, rentCompany.getDriver(LICENSE1));
     }
 
+    @Test
+    void testGetModel() {
+        assertNull(rentCompany.getModel(MODEL2));
+        assertEquals(model1, rentCompany.getModel(MODEL1));
+    }
 
     @Test
     void testRentCar() {
-        assertFalse(myCompany.getCar("1000").isInUse());
-        assertEquals(CarsReturnCode.OK, myCompany.rentCar("1000", 1000, LocalDate.of(2021, 5, 15), 5));
-        assertTrue(myCompany.getCar("1000").isInUse());
+        assertEquals(CarsReturnCode.CAR_IN_USE,
+                rentCompany.rentCar(REG_NUMBER1, LICENSE1, RENT_DATE1, RENT_DAYS1));
+        assertEquals(CarsReturnCode.CAR_NOT_EXIST,
+                rentCompany.rentCar(REG_NUMBER2, LICENSE1, RENT_DATE1, RENT_DAYS1));
+        rentCompany.addModel(model2);
+        rentCompany.addCar(car2);
+        assertEquals(CarsReturnCode.NO_DRIVER,
+                rentCompany.rentCar(REG_NUMBER2, LICENSE2, RENT_DATE1, RENT_DAYS1));
+        assertEquals(CarsReturnCode.OK,
+                rentCompany.rentCar(REG_NUMBER2, LICENSE1, RENT_DATE1, RENT_DAYS1));
+        assertTrue(car1.isInUse());
+        RentRecord record1 = getRecord(REG_NUMBER1);
+        assertEquals(record , record1);
+        assertEquals(RENT_DAYS1, record1.getRentDays());
 
-        assertEquals(CarsReturnCode.CAR_IN_USE, myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5));
-        assertEquals(CarsReturnCode.NO_DRIVER, myCompany.rentCar("2000", 3000, LocalDate.of(2021, 9, 15), 5));
-        assertEquals(CarsReturnCode.CAR_NOT_EXIST, myCompany.rentCar("3000", 3000, LocalDate.of(2021, 9, 15), 5));
-
-        myCompany.rentCar("2000", 1000, LocalDate.of(2021, 6, 15), 5);
-        assertEquals(2, myCompany.getAllRecords().count());
     }
 
-
-    @Test
-    void testReturnCar() {
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5);
-        assertTrue(myCompany.getCar("1000").isInUse());
-        assertEquals(1, myCompany.getAllRecords().count());
-        assertEquals(CarsReturnCode.OK, myCompany.returnCar("1000", 1000, LocalDate.of(2021, 9, 17), 100, 10));
-        assertEquals(CarsReturnCode.CAR_NOT_RENTED, myCompany.returnCar("1000", 1000, LocalDate.of(2021, 9, 17), 100, 10));
-        assertEquals(CarsReturnCode.CAR_NOT_RENTED, myCompany.returnCar("2000", 1000, LocalDate.of(2021, 9, 17), 100, 10));
-        assertEquals(CarsReturnCode.CAR_NOT_RENTED, myCompany.returnCar("3000", 1000, LocalDate.of(2021, 9, 17), 100, 10));
-        assertEquals(1, myCompany.getAllRecords().count());
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5);
-        assertEquals(CarsReturnCode.NO_DRIVER, myCompany.returnCar("1000", 2000, LocalDate.of(2021, 9, 17), 100, 10));
-        assertEquals(CarsReturnCode.NO_DRIVER, myCompany.returnCar("1000", 3000, LocalDate.of(2021, 9, 17), 100, 10));
-        assertEquals(2, myCompany.getAllRecords().count());
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5);
-        assertEquals(CarsReturnCode.RETURN_DATE_WRONG, myCompany.returnCar("1000", 1000, LocalDate.of(2021, 9, 11), 100, 10));
-        assertEquals(2, myCompany.getAllRecords().count());
-
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 9, 21), 50, 10);
-        assertFalse(myCompany.getCar("1000").isInUse());
-        assertEquals(State.GOOD, myCompany.getCar("1000").getState());
-        assertEquals(2, myCompany.getAllRecords().count());
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 9, 21), 50, 25);
-        assertEquals(State.BAD, myCompany.getCar("1000").getState());
-        assertEquals(3, myCompany.getAllRecords().count());
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 9, 21), 50, 35);
-        assertTrue(myCompany.getCar("1000").isIfRemoved());
-        assertEquals(4, myCompany.getAllRecords().count());
-    }
-
-    @Test
-    void testRemoveCar() {
-        Car car = new Car("3000", "red", "z4");
-        myCompany.addCar(car);
-        assertEquals(CarsReturnCode.OK, myCompany.removeCar("3000"));
-        assertTrue(myCompany.getCar("3000").isIfRemoved());
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 9, 15), 5);
-        assertEquals(CarsReturnCode.CAR_IN_USE, myCompany.removeCar("1000"));
-        assertEquals(CarsReturnCode.CAR_NOT_EXIST, myCompany.removeCar("4000"));
-    }
-
-    @Test
-    void testClear() {
-        // in set 2 cars and 2 drivers
-        myCompany.addCar(new Car("3000", "red", "polo"));
-        myCompany.addCar(new Car("4000", "red", "z4"));
-        myCompany.addDriver(new Driver(3000, "Sara", 1991, "0547630003"));
-        myCompany.addDriver(new Driver(4000, "Moysha", 1991, "0547630004"));
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 1, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 1, 21), 50, 10);
-        myCompany.rentCar("2000", 2000, LocalDate.of(2021, 2, 15), 5);
-        myCompany.returnCar("2000", 2000, LocalDate.of(2021, 2, 21), 50, 25);
-        myCompany.rentCar("4000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("4000", 1000, LocalDate.of(2021, 3, 21), 50, 60);
-        myCompany.rentCar("2000", 2000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("2000", 2000, LocalDate.of(2021, 4, 21), 50, 35);
-        myCompany.rentCar("3000", 3000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("3000", 3000, LocalDate.of(2021, 4, 21), 50, 25);
-        myCompany.rentCar("3000", 3000, LocalDate.of(2021, 9, 15), 5);
-        myCompany.returnCar("3000", 3000, LocalDate.of(2021, 9, 21), 50, 50); // date after start removing car
-
-        assertEquals(6, myCompany.getAllRecords().count());
-        assertEquals(4, myCompany.getAllCars().count());
-        List<Car> cars = myCompany.clear(LocalDate.of(2021, 9, 20), 19);
-
-        assertEquals(3, myCompany.getAllRecords().count());
-        assertEquals(2, myCompany.getAllCars().count());
-        assertEquals(4, myCompany.getAllDrivers().count());
-// !
-        List<Car> cars2 = new ArrayList<>();
-        cars2.add(new Car("4000", "red", "z4"));
-        cars2.add(new Car("2000", "red", "z3"));
-        assertEquals(cars2, cars);
-
-        assertEquals(new Car("3000", "red", "polo"), myCompany.getCar("3000"));
-        assertEquals(new Car("1000", "red", "z4"), myCompany.getCar("1000"));
-        assertNull(myCompany.getCar("2000"));
-        assertNull(myCompany.getCar("4000"));
-    }
-
-    @Test
-    void testGetCarDrivers() {
-        myCompany.addCar(new Car("3000", "red", "polo"));
-        myCompany.addDriver(new Driver(3000, "Sam", 1986, "0547630002"));
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 1, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 1, 21), 50, 25);
-        myCompany.rentCar("1000", 2000, LocalDate.of(2021, 2, 15), 5);
-        myCompany.returnCar("1000", 2000, LocalDate.of(2021, 2, 21), 50, 25);
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 3, 21), 50, 25);
-        myCompany.rentCar("1000", 3000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("1000", 3000, LocalDate.of(2021, 5, 21), 50, 25);
-
-        List<Driver> drv = myCompany.getCarDrivers("1000");
-        assertEquals(3, drv.size());
-
-        Driver d1 = myCompany.getDriver(2000);
-        assertEquals(d1, drv.stream().filter(e -> e.getLicenceId() == 2000).findAny().orElse(null));
-        assertNull(drv.stream().filter(e -> e.getLicenceId() == 4000).findAny().orElse(null));
-    }
-
-    @Test
-    void testGetDriverCars() {
-        myCompany.addCar(new Car("3000", "red", "polo"));
-        myCompany.addDriver(new Driver(3000, "Sam", 1986, "0547630002"));
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 1, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 1, 21), 50, 25);
-        myCompany.rentCar("2000", 1000, LocalDate.of(2021, 2, 15), 5);
-        myCompany.returnCar("2000", 1000, LocalDate.of(2021, 2, 21), 50, 25);
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 3, 21), 50, 25);
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("3000", 1000, LocalDate.of(2021, 5, 21), 50, 25);
-
-        List<Car> cars = myCompany.getDriverCars(1000);
-        assertEquals(3, cars.size());
-
-        Car car1 = myCompany.getCar("1000");
-        Car car2 = myCompany.getCar("2000");
-        Car car3 = myCompany.getCar("3000");
-        assertEquals(car1, cars.stream().filter(e -> e.getRegNumber().equals("1000")).findAny().orElse(null));
-        assertEquals(car2, cars.stream().filter(e -> e.getRegNumber().equals("2000")).findAny().orElse(null));
-        assertEquals(car3, cars.stream().filter(e -> e.getRegNumber().equals("3000")).findAny().orElse(null));
-
-        assertNull(cars.stream().filter(e -> e.getRegNumber().equals("4000")).findAny().orElse(null));
-    }
-
-    @Test
-    void testGetAllCars() {
-        List<Car> testStreamCarsList = myCompany.getAllCars()
-                .collect(Collectors.toList());
-// !
-        List<Car> cars = new ArrayList<>();
-        cars.add(new Car("1000", "red", "z4"));
-        cars.add(new Car("2000", "red", "z3"));
-        assertEquals(cars, testStreamCarsList);
-    }
-
-    @Test
-    void testGetAllDrivers() {
-        List<Driver> testStreamDriversList = myCompany.getAllDrivers().collect(Collectors.toList());
-// !
-        List<Driver> drv = new ArrayList<>();
-        drv.add(new Driver(2000, "Sam", 1986, "0547630002"));
-        drv.add(new Driver(1000, "Peter", 1975, "0547630001"));
-        assertEquals(drv, testStreamDriversList);
+    private RentRecord getRecord(String regNumber1) {
+        return rentCompany.getAllRecords()
+                .filter(r -> r.getRegNumber() == regNumber1)
+                .findFirst()
+                .orElse(null);
     }
 
     @Test
     void testGetAllRecords() {
-        myCompany.rentCar("2000", 1000, LocalDate.of(2021, 1, 21), 5);
-        myCompany.returnCar("2000", 1000, LocalDate.of(2021, 1, 23), 10, 10);
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 2, 10), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 2, 23), 10, 10);
-        myCompany.rentCar("1000", 2000, LocalDate.of(2021, 3, 15), 5);
-        List<RentRecord> testStreamRent = myCompany.getAllRecords().collect(Collectors.toList());
-        assertEquals(3, testStreamRent.size());
+        RentRecord record1 = rentCompany.getAllRecords().findFirst().orElse(null);
+        assertEquals(record, record1);
     }
 
     @Test
-    void testGetMostPopularModeNames() {
-        myCompany.rentCar("2000", 1000, LocalDate.of(2021, 1, 21), 5);
-        myCompany.returnCar("2000", 1000, LocalDate.of(2021, 1, 23), 10, 10);
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 2, 10), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 2, 23), 10, 10);
-        myCompany.rentCar("1000", 2000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("1000", 2000, LocalDate.of(2021, 3, 23), 10, 10);
-// !
-        List<String> str = new ArrayList<>();
-        str.add("z4");
-        assertEquals(str, myCompany.getMostPopularModelNames());
+    void testGetCarDrivers() {
+        rentCompany.getCarDrivers(REG_NUMBER1).forEach(System.out::println);
+        rentCompany.getCarDrivers(REG_NUMBER1)
+                .forEach(d -> assertEquals(driver1, d));
+        assertNull(rentCompany.getCarDrivers(REG_NUMBER2));
+    }
 
-        myCompany.addCar(new Car("3000", "red", "polo"));
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("3000", 1000, LocalDate.of(2021, 3, 23), 10, 10);
-        myCompany.rentCar("2000", 2000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("2000", 2000, LocalDate.of(2021, 4, 23), 10, 10);
-// !
-        List<String> str2 = new ArrayList<>();
-        str2.add("z3");
-        str2.add("z4");
-        assertEquals(str2, myCompany.getMostPopularModelNames());
+    @Test
+    void testGetDriverCars() {
+        rentCompany.getDriverCars(LICENSE1)
+                .forEach(c -> assertEquals(car1, c));
+        assertNull(rentCompany.getDriverCars(LICENSE2));
+    }
 
-        myCompany.rentCar("3000", 4000, LocalDate.of(2021, 5, 15), 5);
-        myCompany.returnCar("3000", 4000, LocalDate.of(2021, 5, 23), 10, 10);
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 6, 15), 5);
-        myCompany.returnCar("3000", 1000, LocalDate.of(2021, 6, 23), 10, 10);
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 6, 15), 5);
+    @Test
+    void testReturnCarCodes() {
+        rentCompany.addModel(model2);
+        rentCompany.addCar(car2);
+        assertEquals(CarsReturnCode.CAR_NOT_RENTED,
+                rentCompany.returnCar(REG_NUMBER2, LICENSE1, RETURN_DATE, 100, 0));
+        assertEquals(CarsReturnCode.NO_DRIVER,
+                rentCompany.returnCar(REG_NUMBER1, LICENSE2, RETURN_DATE, 100, 0));
+        rentCompany.addDriver(driver2);
+        assertEquals(CarsReturnCode.CAR_NOT_RENTED,
+                rentCompany.returnCar(REG_NUMBER1, LICENSE2, RETURN_DATE, 100, 0));
+        assertEquals(CarsReturnCode.RETURN_DATE_WRONG,
+                rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE_WRONG, 100, 0));
+        assertEquals(CarsReturnCode.OK,
+                rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE, 100, 0));
+    }
 
-// !
-        List<String> str3 = new ArrayList<>();
-        str3.add("polo");
-        assertEquals(str3, myCompany.getMostPopularModelNames());
+    @Test
+    void testReturnCarNoDamagesNoAdditionalCost() {
+        rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE, 100, 0);
+        assertFalse(car1.isInUse());
+        assertFalse(car1.isIfRemoved());
+        assertEquals(State.EXCELLENT, car1.getState());
+        record.setReturnDate(RETURN_DATE);
+        record.setDamages(0);
+        record.setGasTankPercent(100);
+        record.setCoast(model1.getPriceDay() * RENT_DAYS1);
+        RentRecord actual = getRecord(REG_NUMBER1);
+        assertEquals(record, actual);
+        assertEquals(record.getReturnDate(), actual.getReturnDate());
+        assertEquals(record.getDamages(), actual.getDamages());
+        assertEquals(record.getGasTankPercent(), actual.getGasTankPercent());
+        assertEquals(record.getCoast(), actual.getCoast(), 0.01);
+    }
+
+    @Test
+    void testReturnCarWithDamagesAdditionalCosts() {
+        rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE_DELAY, DAMAGES, GAS_PERCENT);
+        assertFalse(car1.isInUse());
+        assertTrue(car1.isIfRemoved());
+        record.setDamages(DAMAGES);
+        record.setGasTankPercent(GAS_PERCENT);
+        record.setReturnDate(RETURN_DATE_DELAY);
+        record.setCoast((float) (model1.getPriceDay() * RENT_DAYS1 + getAdditionalCost()));
+        RentRecord actual = getRecord(REG_NUMBER1);
+        assertEquals(record, actual);
+        assertEquals(record.getReturnDate(), actual.getReturnDate());
+        assertEquals(record.getDamages(), actual.getDamages());
+        assertEquals(record.getGasTankPercent(), actual.getGasTankPercent());
+        assertEquals(record.getCoast(), actual.getCoast(), 0.01);
+    }
+
+    private double getAdditionalCost() {
+        int gasPrice = ((AbstractRentCompany)rentCompany).getGasPrice();
+        int finePercent = ((AbstractRentCompany)rentCompany).getFinePercent();
+        int gasTank = model1.getGasTank();
+        int priceDay = model1.getPriceDay();
+        return (gasTank - gasTank * GAS_PERCENT / 100.) * gasPrice
+                + (priceDay + priceDay * finePercent / 100.) * DELAY_DAYS;
+    }
+
+    @Test
+    void testGetAllCars() {
+        rentCompany.addCar(car3);
+        Car[] expected = {car1, car3};
+        Object[] actual = rentCompany.getAllCars()
+                .sorted((c1, c2) -> c1.getRegNumber().compareTo(c2.getRegNumber()))
+                .toArray();
+        assertArrayEquals(expected, actual);
+    }
+
+    @Test
+    void testGetAllDrivers() {
+        rentCompany.addDriver(driver2);
+        Driver[] expected = {driver1, driver2};
+        Driver[] actual = rentCompany.getAllDrivers()
+                .sorted((d1,d2) -> Long.compare(d1.getLicenceId(), d2.getLicenceId()))
+                .toArray(Driver[]::new);
+        assertArrayEquals(expected, actual);
+    }
+
+    @Test
+    void testGetMostPopularModelNames() {
+        setupStatistics();
+        String[] expected = {MODEL2, MODEL1};
+        String[] actual = rentCompany.getMostPopularModelNames()
+                .stream()
+                .sorted()
+                .toArray(String[]::new);
+        assertArrayEquals(expected, actual);
     }
 
     @Test
     void testGetModelProfit() {
-        myCompany.addCar(new Car("3000", "red", "polo")); // polo : 40$ // 2000 - z3 : 100$
-        myCompany.addCar(new Car("4000", "red", "z4"));
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("3000", 1000, LocalDate.of(2021, 3, 20), 100, 10);
-        // 5*40=200
-        assertEquals(200, myCompany.getModelProfit("polo"));
-
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("3000", 1000, LocalDate.of(2021, 3, 17), 50, 10);
-        // 2*40=80 + (50/50%=25*10)=250(petrol) + 200 already get(above)
-        assertEquals(530, myCompany.getModelProfit("polo"));
-
-
-        myCompany.rentCar("2000", 2000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("2000", 2000, LocalDate.of(2021, 4, 23), 100, 10);
-        // 5*100=500 + 3*100=300(over contract) + 3*15%=45
-        assertEquals(845, myCompany.getModelProfit("z3"));
-
-        myCompany.rentCar("2000", 2000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("2000", 2000, LocalDate.of(2021, 4, 23), 50, 10);
-        // 5*100=500 + 3*100=300(over contract) + 3*15%=45 + (50/50%=25*10)=250(petrol) + 845 already get(above)
-        assertEquals(1940, myCompany.getModelProfit("z3"));
-
+        setupStatistics();
+        assertEquals(model1.getPriceDay() * RENT_DAYS1 * 3, rentCompany.getModelProfit(MODEL1));
+        assertEquals(model2.getPriceDay() * RENT_DAYS1 * 3, rentCompany.getModelProfit(MODEL2));
     }
 
     @Test
     void testGetMostProfitModelNames() {
-        myCompany.addCar(new Car("3000", "red", "polo"));
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 3, 20), 100, 10);
-        // 750.0
-
-        myCompany.rentCar("2000", 2000, LocalDate.of(2021, 4, 15), 5);
-        myCompany.returnCar("2000", 2000, LocalDate.of(2021, 4, 25), 100, 10);
-        // 1075.0
-        List<String> str = new ArrayList<>();
-        str.add("z3");
-        assertEquals(str, myCompany.getMostProfitModelNames());
-
-        myCompany.rentCar("1000", 1000, LocalDate.of(2021, 3, 15), 5);
-        myCompany.returnCar("1000", 1000, LocalDate.of(2021, 3, 20), 100, 10);
-        // 1500.0
-        List<String> str2 = new ArrayList<>();
-        str2.add("z4");
-        assertEquals(str2, myCompany.getMostProfitModelNames());
-
-        myCompany.rentCar("3000", 1000, LocalDate.of(2021, 3, 1), 5);
-        myCompany.returnCar("3000", 1000, LocalDate.of(2021, 3, 30), 32, 10);
-
-        List<String> str3 = new ArrayList<>();
-        str3.add("polo");
-        str3.add("z4");
-        assertEquals(str3, myCompany.getMostProfitModelNames());
+        setupStatistics();
+        String[] expected = {MODEL1};
+        String[] actual = rentCompany.getMostProfitModelNames().stream().toArray(String[]::new);
+        assertArrayEquals(expected, actual);
     }
+
+    private void setupStatistics() {
+        rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE, 100, 0);
+        rentReturn(REG_NUMBER1, 2);
+        rentCompany.addModel(model2);
+        rentCompany.addCar(car2);
+        rentReturn(REG_NUMBER2, 3);
+    }
+
+    private void rentReturn(String regNumber, int n) {
+        for(int i = 0; i < n; i++) {
+            rentCompany.rentCar(regNumber, LICENSE1, RENT_DATE1, RENT_DAYS1);
+            rentCompany.returnCar(regNumber, LICENSE1, RETURN_DATE, 100, 0);
+        }
+
+    }
+
+    @Test
+    void testRemoveCar() {
+        assertEquals(CarsReturnCode.CAR_IN_USE, rentCompany.removeCar(REG_NUMBER1));
+        assertEquals(CarsReturnCode.CAR_NOT_EXIST, rentCompany.removeCar(REG_NUMBER2));
+        rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE, 100, 0);
+        assertEquals(CarsReturnCode.OK, rentCompany.removeCar(REG_NUMBER1));
+        assertTrue(car1.isIfRemoved());
+    }
+
+    @Test
+    void testClear() {
+        setUpClear();
+        //assumed car1 and car2 are deleted
+        //car3 is not deleted
+        Car[] expected = {car1, car2};
+        Car[] actual = rentCompany.clear(CURRENT_DATE, CLEAR_DAYS)
+                .stream()
+                .sorted((c1, c2) -> c1.getRegNumber().compareTo(c2.getRegNumber()))
+                .toArray(Car[]::new);
+        assertArrayEquals(expected, actual);
+        assertNull(rentCompany.getCar(REG_NUMBER1));
+        assertNull(rentCompany.getCar(REG_NUMBER2));
+        assertNull(getRecord(REG_NUMBER1));
+        assertNull(getRecord(REG_NUMBER2));
+        assertNotNull(rentCompany.getCar(REG_NUMBER3));
+        assertNotNull(getRecord(REG_NUMBER3));
+    }
+
+    private void setUpClear() {
+        rentCompany.returnCar(REG_NUMBER1, LICENSE1, RETURN_DATE, 0, 90);
+        rentCompany.addModel(model2);
+        rentCompany.addCar(car2); //124
+        rentCompany.addCar(car3); //125
+        rentCompany.rentCar(REG_NUMBER2, LICENSE1, RENT_DATE1, RENT_DAYS1);
+        rentCompany.rentCar(REG_NUMBER3, LICENSE1, RENT_DATE1, RENT_DAYS1);
+        rentCompany.returnCar(REG_NUMBER2, LICENSE1, RETURN_DATE, 100, 0);
+        rentCompany.removeCar(REG_NUMBER2);
+        rentCompany.returnCar(REG_NUMBER3, LICENSE1, RETURN_DATE, 100, 0);
+
+    }
+
 }

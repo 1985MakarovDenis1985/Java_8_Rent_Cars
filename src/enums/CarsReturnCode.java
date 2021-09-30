@@ -10,5 +10,5 @@ public enum CarsReturnCode {
     CAR_NOT_EXIST,
     NO_DRIVER,
     CAR_NOT_RENTED,
-    RETURN_DATE_WRONG
+    RETURN_DATE_WRONG,
 }
